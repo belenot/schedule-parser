@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration xmlns="http://logging.apache.org/log4j/2.0/config"
+	       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	       xsi:schemaLocation="http://logging.apache.org/log4j/2.0/config
+				   https://raw.githubusercontent.com/apache/logging-log4j2/master/log4j-core/src/main/resources/Log4j-config.xsd"
+	       strict="true" packages="com.belenot" status="warn" name="Belenot"
+	       >
+  
+  <Appenders>
+    <Appender type="Console" name="STDOUT">
+      <Layout type="PatternLayout" pattern="[%highlight{%p}] (%d{HH:mm:ss}) %style{%c{1}}{bold,blue}: %m{ansi}{ValueStyle=cyan}%n"/>
+    </Appender>
+  </Appenders>
+  <Loggers>
+    <Logger name="com.belenot" level="info" additivity="false">
+      <AppenderRef ref="STDOUT"/>
+    </Logger>
+    <Root level="error">
+      <AppenderRef ref="STDOUT"/>
+    </Root>
+  </Loggers>
+</Configuration>
