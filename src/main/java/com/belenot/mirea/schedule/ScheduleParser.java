@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -83,10 +83,10 @@ public class ScheduleParser implements Closeable, AutoCloseable {
     }
 
     protected List<ScheduledSubjectsRow> parseScheduledSubjectsRows(String groupName) {
-	int columnIndex = getGroupIndex(groupName);
+	int columnIndex = getGroupIndex(groupName); //Marks column with subject's title
 	int rowIndexFirst = groupNamesRowIndex + subjectRowIndexOffset;
 	int rowCount = subjectRowCount;
-	int lessonNumberOffset = -4;
+	int lessonNumberIndex = 1;
 	int weekParityOffset = -1;
 	int lessonTypeOffset = 1;
 	int teacherOffset = 2;
@@ -101,12 +101,12 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	    if (cell == null || !cell.getCellType().equals(CellType.STRING)) continue;
 	    scheduledSubjectsRow.setSubjectTitle(cell.getStringCellValue());
 	    
-	    cell = row.getCell(columnIndex + lessonTypeOffset);
+	    cell = row.getCell(columnIndex + lessonTypeOffset, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 	    if (cell.getCellType().equals(CellType.STRING)) {
 		scheduledSubjectsRow.setLessonType(cell.getStringCellValue());
 	    }
 
-	    cell = row.getCell(columnIndex + teacherOffset);
+	    cell = row.getCell(columnIndex + teacherOffset, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 	    if (cell.getCellType().equals(CellType.STRING)){
 		scheduledSubjectsRow.setTeacherShortName(cell.getStringCellValue());
 	    }
@@ -135,9 +135,9 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	    
 	    //Assuming that subject number cell merged between two rows
 	    if ((rowIndex - rowIndexFirst) % 2 == 0) {
-		cell = row.getCell(columnIndex + lessonNumberOffset);
+		cell = row.getCell(lessonNumberIndex);
 	    } else {
-		cell = sheet.getRow(rowIndex - 1).getCell(columnIndex + lessonNumberOffset);
+		cell = sheet.getRow(rowIndex - 1).getCell(lessonNumberIndex);
 	    }
 	    if (cell == null || !cell.getCellType().equals(CellType.NUMERIC)) continue;
 	    scheduledSubjectsRow.setLessonNumber((int)cell.getNumericCellValue());
@@ -154,28 +154,30 @@ public class ScheduleParser implements Closeable, AutoCloseable {
     protected List<ScheduledSubjectModel> generateScheduledSubjectsModels(ScheduledSubjectsRow ssr) {
 	List<ScheduledSubjectModel> scheduledSubjectsModels = new ArrayList<>();
 	Map<String, List<Integer>> weekMap = retrieveWeeks(ssr.getSubjectTitle(),ssr.isWeekParity());
+	int titleIndex = 0;
 	for (String subtitle : weekMap.keySet()) {
 	    for (int weekNumber : weekMap.get(subtitle)) {
 		ScheduledSubjectModel scheduledSubjectModel = new ScheduledSubjectModel();
 		scheduledSubjectModel.setSubjectTitle(subtitle);
-		scheduledSubjectModel.setClassroomNumber(ssr.getClassroomNumber());
-		scheduledSubjectModel.setTeacherShortName(ssr.getTeacherShortName());
-		scheduledSubjectModel.setLessonType(ssr.getLessonType());
+		scheduledSubjectModel.setClassroomNumber(retrieveMergedValue(ssr.getClassroomNumber(), titleIndex, 0));
+		scheduledSubjectModel.setTeacherShortName(retrieveMergedValue(ssr.getTeacherShortName(), titleIndex, 0));
+		scheduledSubjectModel.setLessonType(retrieveMergedValue(ssr.getLessonType(), titleIndex, 0));
 		scheduledSubjectModel.setLessonNumber(ssr.getLessonNumber());
 		Date date = new GregorianCalendar(year, firstMonth, weekNumber * 7 + ssr.getDayOfWeek()).getTime();
 		scheduledSubjectModel.setDate(date);
-		
 		scheduledSubjectsModels.add(scheduledSubjectModel);
 	    }
+	    titleIndex++;
 	}
 	return scheduledSubjectsModels;
     }
 
     protected Map<String, List<Integer>> retrieveWeeks(String title, boolean weekParity) {
-	Map<String, List<Integer>> weekNumbersMap = new HashMap<>();
-	Pattern ordinalSubjectPattern = Pattern.compile("(?<subject>\\p{L}{2,}[ \\p{L}]+[ \\p{L}\\d]*)");
+	Map<String, List<Integer>> weekNumbersMap = new LinkedHashMap<>(); //Order is IMPORTANT
+	Pattern ordinalSubjectPattern = Pattern.compile("(?<subject>(\\p{L}{3,})[ \\p{L}\\d]*)");
 	Pattern weekEnumerationPattern = Pattern.compile("(?<weeks>(\\d*?, ?)*?(\\d+)) ?н");
-	Pattern krWeekEnumerationPattern = Pattern.compile("(?<krWeeks>кр ?(\\d*?, ?)*?(\\d+)) ?н");
+	Pattern krWeekEnumerationPattern = Pattern.compile("(?<krWeeks>кр ?(\\d*?, ?)*?(\\d+)) ?н");	
+	Pattern prWeekEnumerationPattern = Pattern.compile("(?<krWeeks>пр ?(\\d*?, ?)*?(\\d+)) ?н");
 	Matcher ordinalSubjectMatcher = ordinalSubjectPattern.matcher(title);
 	int ordinalSubjectPrevIndex = 0;
 	int ordinalSubjectNextIndex = 0;
@@ -185,8 +187,9 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	    String subjectName = ordinalSubjectMatcher.group("subject");
 	    Matcher weekEnumerationMatcher = weekEnumerationPattern.matcher(title.substring(ordinalSubjectPrevIndex, ordinalSubjectNextIndex));
 	    Matcher krWeekEnumerationMatcher = krWeekEnumerationPattern.matcher(title.substring(ordinalSubjectPrevIndex, ordinalSubjectNextIndex));
+	    Matcher prWeekEnumerationMatcher = prWeekEnumerationPattern.matcher(title.substring(ordinalSubjectPrevIndex, ordinalSubjectNextIndex));
 	    List<Integer> weekNumbers = new ArrayList<>();
-	    if (weekEnumerationMatcher.find() && !krWeekEnumerationMatcher.find()) {
+	    if (weekEnumerationMatcher.find() && !krWeekEnumerationMatcher.find() && !prWeekEnumerationMatcher.find()) {
 		for (String strWeekNumbers : weekEnumerationMatcher.group("weeks").split(", ?")) {
 		    weekNumbers.add(Integer.parseInt(strWeekNumbers));
 		}
@@ -199,6 +202,14 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	}
 	    
 	return weekNumbersMap;
+    }
+    protected String retrieveMergedValue(String value, int index, int defaultIndex) {
+	if (value == null) return null;
+	String[] values = value.split("[\\n,/]");
+	if (index < values.length) {
+	    return values[index];
+	}
+	return defaultIndex < values.length ? values[defaultIndex] : null;
     }
     
 
