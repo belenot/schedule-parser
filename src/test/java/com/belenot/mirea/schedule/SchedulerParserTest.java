@@ -7,8 +7,6 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
 
-import com.belenot.mirea.schedule.model.Schedule;
-import com.belenot.mirea.schedule.model.ScheduledSubject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -41,7 +39,7 @@ public class SchedulerParserTest {
     
     @Test
     @Order( 1 )
-    @Disabled
+    //@Disabled
     public void getGroupNamesTest() {
 	List<String> groupNames = schedulerParser.getGroupNames();
 	groupNames.stream().forEach( s -> logger.info(s));
@@ -50,7 +48,7 @@ public class SchedulerParserTest {
 
     @Test
     @Order( 2 )
-    @Disabled
+    //@Disabled
     public void getGroupIndexTest() {
 	int id = assertDoesNotThrow( () -> schedulerParser.getGroupIndex("БАСО-02-16"));
 	logger.info(id);
@@ -59,7 +57,7 @@ public class SchedulerParserTest {
 
     @Test
     @Order( 3 )
-    @Disabled
+    //@Disabled
     public void parseScheduledSubjectsRowsTest() throws JsonProcessingException {
         List<ScheduledSubjectsRow> scheduledSubjectsRows = schedulerParser.parseScheduledSubjectsRows("БАСО-02-16");
 	ObjectWriter writer = new ObjectMapper().writer();
@@ -71,7 +69,7 @@ public class SchedulerParserTest {
 
     @Test
     @Order( 4 )
-    @Disabled
+    //@Disabled
     public void retrieveWeeksTest() {
 	List<ScheduledSubjectsRow> scheduledSubjectsRows = schedulerParser.parseScheduledSubjectsRows("БАСО-02-16");
 	for (ScheduledSubjectsRow scheduledSubjectsRow : scheduledSubjectsRows) {
@@ -84,24 +82,25 @@ public class SchedulerParserTest {
 
     @Test
     @Order( 5 )
-    @Disabled
+    //@Disabled
     public void generateScheduledSubjectsTest() {
 	List<ScheduledSubjectsRow> scheduledSubjectsRows = schedulerParser.parseScheduledSubjectsRows("БАСО-02-16");
 	for (ScheduledSubjectsRow scheduledSubjectsRow : scheduledSubjectsRows) {
-	    List<ScheduledSubject> scheduledSubjects = schedulerParser.generateScheduledSubjects(scheduledSubjectsRow);
-	    for (ScheduledSubject scheduledSubject : scheduledSubjects) {
-		logger.info(scheduledSubject);
+	    List<ScheduledSubjectModel> scheduledSubjectsModels = schedulerParser.generateScheduledSubjectsModels(scheduledSubjectsRow);
+	    for (ScheduledSubjectModel scheduledSubjectModel : scheduledSubjectsModels) {
+		logger.info(scheduledSubjectModel);
 	    }
 	}
     }
 
     @Test
     @Order( 6 )
+    //@Disabled
     public void parseScheduleTest() throws JsonProcessingException {
 	ObjectWriter writer = new ObjectMapper().setDateFormat(new SimpleDateFormat("dd-MM-yyyy")).writer();
-	Schedule schedule = schedulerParser.parseSchedule("БАСО-02-16");
-	assertTrue(schedule.getSubjects().size() > 0);
-	logger.info(writer.withDefaultPrettyPrinter().writeValueAsString(schedule));
+	ScheduleModel scheduleModel = schedulerParser.parseSchedule("БАСО-02-16");
+	assertTrue(scheduleModel.getScheduledSubjectsModels().size() > 0);
+	logger.info(writer.withDefaultPrettyPrinter().writeValueAsString(scheduleModel));
     }
 
     @AfterAll

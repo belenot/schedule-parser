@@ -12,14 +12,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.belenot.mirea.schedule.model.Classroom;
-import com.belenot.mirea.schedule.model.Schedule;
-import com.belenot.mirea.schedule.model.ScheduledSubject;
-import com.belenot.mirea.schedule.model.ScheduledSubject.LessonTime;
-import com.belenot.mirea.schedule.model.ScheduledSubject.LessonType;
-import com.belenot.mirea.schedule.model.Subject;
-import com.belenot.mirea.schedule.model.Teacher;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.Cell;
@@ -78,16 +70,16 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	return -1;	
     }
 
-    public Schedule parseSchedule(String groupName) {
-	Schedule schedule = new Schedule();
-	schedule.setGroupName(groupName);
-	List<ScheduledSubject> subjects = new ArrayList<>(128);
+    public ScheduleModel parseSchedule(String groupName) {
+	ScheduleModel scheduleModel = new ScheduleModel();
+	scheduleModel.setGroupName(groupName);
+	List<ScheduledSubjectModel> subjects = new ArrayList<>(128);
 	List<ScheduledSubjectsRow> scheduledSubjectsRows = parseScheduledSubjectsRows(groupName);
 	for (ScheduledSubjectsRow scheduledSubjectsRow : scheduledSubjectsRows) {
-	    subjects.addAll(generateScheduledSubjects(scheduledSubjectsRow));
+	    subjects.addAll(generateScheduledSubjectsModels(scheduledSubjectsRow));
 	}
-	schedule.setSubjects(subjects);
-	return schedule;
+	scheduleModel.setScheduledSubjectsModels(subjects);
+	return scheduleModel;
     }
 
     protected List<ScheduledSubjectsRow> parseScheduledSubjectsRows(String groupName) {
@@ -158,29 +150,25 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	return scheduledSubjectsRows;
     }
 
-    protected List<ScheduledSubject> generateScheduledSubjects(ScheduledSubjectsRow ssr) {
-	List<ScheduledSubject> scheduledSubjects = new ArrayList<>();
+    
+    protected List<ScheduledSubjectModel> generateScheduledSubjectsModels(ScheduledSubjectsRow ssr) {
+	List<ScheduledSubjectModel> scheduledSubjectsModels = new ArrayList<>();
 	Map<String, List<Integer>> weekMap = retrieveWeeks(ssr.getSubjectTitle(),ssr.isWeekParity());
 	for (String subtitle : weekMap.keySet()) {
 	    for (int weekNumber : weekMap.get(subtitle)) {
-		ScheduledSubject scheduledSubject = new ScheduledSubject();
-		Subject subject = new Subject().setTitle(subtitle);
-		Classroom classroom = ssr.getClassroomNumber() == null ? null :
-		    new Classroom().setNumber(ssr.getClassroomNumber());
-		Teacher teacher = ssr.getTeacherShortName() == null ? null :
-		    new Teacher().setShortName(ssr.getTeacherShortName());
-		LessonType lessonType = ssr.getLessonType() == null ? null :
-		    LessonType.byString(ssr.getLessonType());
-		LessonTime lessonTime = ssr.getLessonNumber() < 1 || ssr.getLessonNumber() > 6 ?
-		    null : LessonTime.byNumber(ssr.getLessonNumber());
+		ScheduledSubjectModel scheduledSubjectModel = new ScheduledSubjectModel();
+		scheduledSubjectModel.setSubjectTitle(subtitle);
+		scheduledSubjectModel.setClassroomNumber(ssr.getClassroomNumber());
+		scheduledSubjectModel.setTeacherShortName(ssr.getTeacherShortName());
+		scheduledSubjectModel.setLessonType(ssr.getLessonType());
+		scheduledSubjectModel.setLessonNumber(ssr.getLessonNumber());
 		Date date = new GregorianCalendar(year, firstMonth, weekNumber * 7 + ssr.getDayOfWeek()).getTime();
-		scheduledSubject.setSubject(subject).setClassroom(classroom)
-		    .setTeacher(teacher).setLessonType(lessonType)
-		    .setLessonTime(lessonTime).setDate(date);
-		scheduledSubjects.add(scheduledSubject);
+		scheduledSubjectModel.setDate(date);
+		
+		scheduledSubjectsModels.add(scheduledSubjectModel);
 	    }
 	}
-	return scheduledSubjects;
+	return scheduledSubjectsModels;
     }
 
     protected Map<String, List<Integer>> retrieveWeeks(String title, boolean weekParity) {
