@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -152,6 +153,7 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 
     
     protected List<ScheduledSubjectModel> generateScheduledSubjectsModels(ScheduledSubjectsRow ssr) {
+	String teacherPattern = "\\p{IsUppercase}\\p{L}+ (\\p{IsUppercase}\\.? ?){2}";
 	List<ScheduledSubjectModel> scheduledSubjectsModels = new ArrayList<>();
 	Map<String, List<Integer>> weekMap = retrieveWeeks(ssr.getSubjectTitle(),ssr.isWeekParity());
 	int titleIndex = 0;
@@ -159,9 +161,9 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	    for (int weekNumber : weekMap.get(subtitle)) {
 		ScheduledSubjectModel scheduledSubjectModel = new ScheduledSubjectModel();
 		scheduledSubjectModel.setSubjectTitle(subtitle);
-		scheduledSubjectModel.setClassroomNumber(retrieveMergedValue(ssr.getClassroomNumber(), titleIndex, 0));
-		scheduledSubjectModel.setTeacherShortName(retrieveMergedValue(ssr.getTeacherShortName(), titleIndex, 0));
-		scheduledSubjectModel.setLessonType(retrieveMergedValue(ssr.getLessonType(), titleIndex, 0));
+		scheduledSubjectModel.setClassroomNumber(retrieveMergedValue(ssr.getClassroomNumber(), titleIndex, 0, null));
+		scheduledSubjectModel.setTeacherShortName(retrieveMergedValue(ssr.getTeacherShortName(), titleIndex, 0, teacherPattern));
+		scheduledSubjectModel.setLessonType(retrieveMergedValue(ssr.getLessonType(), titleIndex, 0, null));
 		scheduledSubjectModel.setLessonNumber(ssr.getLessonNumber());
 		Date date = new GregorianCalendar(year, firstMonth, weekNumber * 7 + ssr.getDayOfWeek()).getTime();
 		scheduledSubjectModel.setDate(date);
@@ -210,13 +212,32 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	    
 	return weekNumbersMap;
     }
-    protected String retrieveMergedValue(String value, int index, int defaultIndex) {
+    protected String retrieveMergedValue(String value, int index, int defaultIndex, String pattern) {
 	if (value == null) return null;
-	String[] values = value.split("[\\n,/]");
-	if (index < values.length) {
-	    return values[index];
+	if (pattern == null) {
+	    String[] values = value.split("[\\n,/]");
+	    if (index < values.length) {
+		return values[index];
+	    }
+	    return defaultIndex < values.length ? values[defaultIndex] : null;
+	} else {
+	    Pattern valuePattern = Pattern.compile(pattern);
+	    Matcher valueMatcher = valuePattern.matcher(value);
+	    int nextValueIndex = 0;
+	    int matchIterationIndex = 0;
+	    List<String> matchedValues = new LinkedList<>();
+	    while (valueMatcher.find(nextValueIndex)) {
+		if (matchIterationIndex == index) {
+		    return valueMatcher.group();
+		}
+		matchedValues.add(valueMatcher.group());
+		nextValueIndex = valueMatcher.end();
+		matchIterationIndex++;
+	    }
+	    return matchedValues.size() > defaultIndex ? matchedValues.get(defaultIndex) : null;
+		
 	}
-	return defaultIndex < values.length ? values[defaultIndex] : null;
+	
     }
     
 
