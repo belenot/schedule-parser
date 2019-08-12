@@ -81,7 +81,7 @@ public class SchedulerParserTest {
 
     @Test
     @Order( 5 )
-    @Disabled
+    //@Disabled
     public void generateScheduledSubjectsTest() {
 	List<ScheduledSubjectsRow> scheduledSubjectsRows = schedulerParser.parseScheduledSubjectsRows("БАСО-02-16");
 	for (ScheduledSubjectsRow scheduledSubjectsRow : scheduledSubjectsRows) {

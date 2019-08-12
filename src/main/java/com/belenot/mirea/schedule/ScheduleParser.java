@@ -175,10 +175,10 @@ public class ScheduleParser implements Closeable, AutoCloseable {
     protected Map<String, List<Integer>> retrieveWeeks(String title, boolean weekParity) {
 	Map<String, List<Integer>> weekNumbersMap = new LinkedHashMap<>(); //Order is IMPORTANT
 	Pattern ordinalSubjectPattern =
-	    Pattern.compile("(?<subject>(\\p{IsUppercase})(\\p{IsLowercase}+|\\p{IsUpperCase})\\.?([ -](\\p{IsLowerCase}[\\p{IsLowercase}\\.]{2,}|\\p{IsUppercase}\\p{IsUppercase}+|[а-мо-я])\\.?)*((?<cut> \\d,)|( \\d)?))");
-	Pattern weekEnumerationPattern = Pattern.compile("(?<weeks>(\\d+ ?, ?)+\\d+(?<cut> ?н\\.?))");
-	Pattern krWeekEnumerationPattern = Pattern.compile("(?<krWeeks>кр ?(\\d+ ?, ?)+\\d+(?<cut> ?н\\.?))");	
-	Pattern prWeekEnumerationPattern = Pattern.compile("(?<prWeeks>пр ?(\\d+ ?, ?)+\\d+(?<cut> ?н\\.?))");
+	    Pattern.compile("(?<subject>(\\p{IsUppercase})(\\p{IsLowercase}+|\\p{IsUpperCase}+)\\.?([ -](\\p{IsLowerCase}\\p{IsLowercase}+|\\p{IsUppercase}\\p{IsUppercase}+|[а-мо-я])\\.?)*((?<cut> \\d,)|( \\d)?))");
+	Pattern weekEnumerationPattern = Pattern.compile("(?<weeks>(\\d+ ?, ?)*\\d+(?<cut> ?н\\.?))");
+	Pattern krWeekEnumerationPattern = Pattern.compile("(?<krWeeks>кр ?(\\d+ ?, ?)*\\d+(?<cut> ?н\\.?))");	
+	Pattern prWeekEnumerationPattern = Pattern.compile("(?<prWeeks>пр ?(\\d+ ?, ?)*\\d+(?<cut> ?н\\.?))");
 	Matcher ordinalSubjectMatcher = ordinalSubjectPattern.matcher(title);
 	int ordinalSubjectPrevIndex = 0;
 	int ordinalSubjectNextIndex = 0;
