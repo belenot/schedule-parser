@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.LinkedHashMap;
@@ -36,7 +37,7 @@ public class ScheduleParser implements Closeable, AutoCloseable {
     private int weeksAmount = 17;
     private int rowsPerDay = 12;
     private int year = 2019;
-    private int firstMonth = 9;
+	private int firstMonth = 9;
     
     public ScheduleParser() {};
     public ScheduleParser(InputStream in) {
@@ -115,7 +116,7 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	    cell = row.getCell(columnIndex + classroomOffset, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 	    String number = "";
 	    switch (cell.getCellType()) {
-	    case NUMERIC: number = String.valueOf(cell.getNumericCellValue()); break;
+	    case NUMERIC: number = String.valueOf((int)cell.getNumericCellValue()); break;
 	    case STRING: number = cell.getStringCellValue(); break;
 	    default: number = null;
 	    }
@@ -172,44 +173,40 @@ public class ScheduleParser implements Closeable, AutoCloseable {
 	    titleIndex++;
 	}
 	return scheduledSubjectsModels;
-    }
+	}
 
     protected Map<String, List<Integer>> retrieveWeeks(String title, boolean weekParity) {
-	Map<String, List<Integer>> weekNumbersMap = new LinkedHashMap<>(); //Order is IMPORTANT
-	Pattern ordinalSubjectPattern =
-	    Pattern.compile("(?<subject>(\\p{IsUppercase})(\\p{IsLowercase}+|\\p{IsUpperCase}+)\\.?([ -](\\p{IsLowerCase}\\p{IsLowercase}+|\\p{IsUppercase}\\p{IsUppercase}+|[а-мо-я])\\.?)*((?<cut> \\d,)|( \\d)?))");
-	Pattern weekEnumerationPattern = Pattern.compile("(?<weeks>(\\d+ ?, ?)*\\d+(?<cut> ?н\\.?))");
-	Pattern krWeekEnumerationPattern = Pattern.compile("(?<krWeeks>кр ?(\\d+ ?, ?)*\\d+(?<cut> ?н\\.?))");	
-	Pattern prWeekEnumerationPattern = Pattern.compile("(?<prWeeks>пр ?(\\d+ ?, ?)*\\d+(?<cut> ?н\\.?))");
-	Matcher ordinalSubjectMatcher = ordinalSubjectPattern.matcher(title);
-	int ordinalSubjectPrevIndex = 0;
-	int ordinalSubjectNextIndex = 0;
-	while (ordinalSubjectMatcher.find(ordinalSubjectNextIndex)) {
-	    ordinalSubjectPrevIndex = ordinalSubjectNextIndex;
-	    ordinalSubjectNextIndex = ordinalSubjectMatcher.end("subject");
-	    String subjectName = ordinalSubjectMatcher.group("subject");
-	    if (ordinalSubjectMatcher.group("cut") != null && ordinalSubjectMatcher.end("subject") == ordinalSubjectMatcher.end("cut")) {
-		ordinalSubjectNextIndex = ordinalSubjectMatcher.start("cut");
-		subjectName = title.substring(ordinalSubjectMatcher.start("subject"), ordinalSubjectMatcher.start("cut"));
-	    }
-	    String subTitle = title.substring(ordinalSubjectPrevIndex, ordinalSubjectNextIndex);
-	    Matcher weekEnumerationMatcher = weekEnumerationPattern.matcher(subTitle);
-	    Matcher krWeekEnumerationMatcher = krWeekEnumerationPattern.matcher(subTitle);
-	    Matcher prWeekEnumerationMatcher = prWeekEnumerationPattern.matcher(subTitle);
-	    List<Integer> weekNumbers = new ArrayList<>();
-	    if (weekEnumerationMatcher.find() && !krWeekEnumerationMatcher.find() && !prWeekEnumerationMatcher.find()) {
-		String weekEnumerationString = subTitle.substring(weekEnumerationMatcher.start("weeks"), weekEnumerationMatcher.start("cut"));
-		for (String strWeekNumber : weekEnumerationString.split(" ?, ?")) {
-			weekNumbers.add(Integer.parseInt(strWeekNumber));
+		Map<String, List<Integer>> weekNumbersMap = new LinkedHashMap<>(); //Order is IMPORTANT
+		Pattern weekEnumerationPattern = Pattern.compile("\\s?((?<PREFIX>кр|пр) ?)?(?<WEEKS>(\\d+( ?,? ?)?)+)( ?н)\\s?");
+		Matcher weekEnumerationMatcher = weekEnumerationPattern.matcher(title);
+		if (!weekEnumerationMatcher.find()) { //There's no splitting by weeks;
+			List<Integer> weekNumbers = new ArrayList<>();
+			for (int weekNumber = weekParity ? 2 : 1; weekNumber < weeksAmount; weekNumber += 2) {
+				weekNumbers.add(weekNumber);
+			}
+			weekNumbersMap.put(title, weekNumbers);
+			return weekNumbersMap; 
+		} 
+		int weekEnumerationPrevIndex = 0;
+		int weekEnumerationNextIndex = 0;
+		int titleIndex = 0;
+		List<String> subjectTitles = new ArrayList<>(4);
+		for (String subjectTitle : title.split(weekEnumerationPattern.toString())) {
+			if (subjectTitle.trim().length() == 0) continue;
+			subjectTitles.add(subjectTitle.trim());
 		}
-	    } else {
-		for (int weekNumber = weekParity ? 2 : 1; weekNumber < weeksAmount; weekNumber += 2) {
-		    weekNumbers.add(weekNumber);
+		while (weekEnumerationMatcher.find(weekEnumerationNextIndex)) {
+			List<Integer> weekNumbers = new ArrayList<>();
+			weekEnumerationPrevIndex = weekEnumerationNextIndex;
+			weekEnumerationNextIndex = weekEnumerationMatcher.end();
+			String subjectTitle = subjectTitles.get(titleIndex);
+			for (String strWeekNumber : weekEnumerationMatcher.group("WEEKS").split(" ?, ?")) {
+				if (strWeekNumber.trim().length() == 0) continue;
+				weekNumbers.add(Integer.parseInt(strWeekNumber.trim()));
+			}
+			weekNumbersMap.put(subjectTitle, weekNumbers);
+			titleIndex++;
 		}
-	    }
-	    weekNumbersMap.put(subjectName, weekNumbers);
-	}
-	    
 	return weekNumbersMap;
     }
     protected String retrieveMergedValue(String value, int index, int defaultIndex, String pattern) {

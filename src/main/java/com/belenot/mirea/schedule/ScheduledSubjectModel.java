@@ -10,6 +10,7 @@ public class ScheduledSubjectModel {
     private Optional<String> lessonType = Optional.empty();
     private Optional<String> teacherShortName = Optional.empty();
     private Date date;
+    private ScheduledSubjectsRow scheduledSubjectsRow;
     public String getSubjectTitle() {
 	return subjectTitle;
     }
@@ -54,5 +55,13 @@ public class ScheduledSubjectModel {
 				   classroomNumber.orElse("N/A"), lessonType.orElse("N/A"),
 				   teacherShortName.orElse("N/A"));
 	return str;
+    }
+
+    public ScheduledSubjectsRow getScheduledSubjectsRow() {
+        return scheduledSubjectsRow;
+    }
+
+    public void setScheduledSubjectsRow(ScheduledSubjectsRow scheduledSubjectsRow) {
+        this.scheduledSubjectsRow = scheduledSubjectsRow;
     }
 }
